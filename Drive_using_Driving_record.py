@@ -55,6 +55,7 @@ Use ARROWS or WASD keys for control.
 """
 
 from __future__ import print_function
+from distutils.spawn import spawn
 
 
 # ==============================================================================
@@ -69,6 +70,7 @@ import csv
 import copy
 import pandas as pd
 count_control = 0
+csv = pd.read_csv('Driving_record.csv', names=['server','client','none','vehicle','map','time','none2','speed','comp','accel','gyro','loc_x','loc_y','gnss','height','none3','throttle','steer','brake','reverse','handbrake','manual'])
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -241,20 +243,36 @@ class World(object):
         ]
 
     def restart(self):
+        global csv
+        data_vehicle = csv['vehicle']
+        data_vehicle_value = data_vehicle.values
+        data_vehicle_list = data_vehicle_value.tolist()
+        vehicle_name = data_vehicle_list[0]
+        list_name = vehicle_name.split()
+        list_size = len(list_name)
+        result_name = "vehicle."
+        for i in range(list_size):
+            if i == 0:
+                result_name = result_name + list_name[0] + "."
+            elif(i != list_size-1):
+                result_name = result_name + list_name[i] + "_"
+            else:
+                result_name = result_name +list_name[i]
+        print(result_name.lower())
         self.player_max_speed = 1.589
         self.player_max_speed_fast = 3.713
         # Keep same camera config if the camera manager exists.
         cam_index = self.camera_manager.index if self.camera_manager is not None else 0
         cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         # Get a random blueprint.
-        blueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
+        blueprint = random.choice(get_actor_blueprints(self.world, result_name.lower(), self._actor_generation))
+        print(blueprint)
         blueprint.set_attribute('role_name', self.actor_role_name)
         if blueprint.has_attribute('color'):
             color = random.choice(blueprint.get_attribute('color').recommended_values)
             blueprint.set_attribute('color', color)
         if blueprint.has_attribute('driver_id'):
             driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
-            blueprint.set_attribute('driver_id', driver_id)
         if blueprint.has_attribute('is_invincible'):
             blueprint.set_attribute('is_invincible', 'true')
         # set the max speed
@@ -265,7 +283,6 @@ class World(object):
         # Spawn the player.
         if self.player is not None:
             spawn_point = self.player.get_transform()
-            print(spawn_point)
             spawn_point.location.z += 2.0
             spawn_point.rotation.roll = 0.0
             spawn_point.rotation.pitch = 0.0
@@ -280,6 +297,28 @@ class World(object):
                 sys.exit(1)
             spawn_points = self.map.get_spawn_points()
             spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            data_loc_x = csv['loc_x']
+            data_loc_x_value = data_loc_x.values
+            data_loc_x_list = data_loc_x_value.tolist()
+            data_loc_y = csv['loc_y']
+            data_loc_y_value = data_loc_y.values
+            data_loc_y_list = data_loc_y_value.tolist()
+            spawn_point.location.x = data_loc_x_list[0]
+            spawn_point.location.y = data_loc_y_list[0] 
+            data_comp = csv['comp']
+            data_comp_value = data_comp.values
+            data_comp_list = data_comp_value.tolist()
+            result_comp = data_comp_list[0]
+            result_yaw = 0
+            if(result_comp >= 0 and result_comp < 90):
+                result_yaw = -89.6092
+            elif(result_comp>=90 and result_comp<180):
+                result_yaw = 0.159
+            elif(result_comp>=180 and result_comp<270):
+                result_yaw = 89.8378
+            else:
+                result_yaw = -179.84
+            spawn_point.rotation.yaw = result_yaw 
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
             self.show_vehicle_telemetry = False
             self.modify_vehicle_physics(self.player)
@@ -288,6 +327,8 @@ class World(object):
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
         self.gnss_sensor = GnssSensor(self.player)
         self.imu_sensor = IMUSensor(self.player)
+        
+
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
         self.camera_manager.transform_index = cam_pos_index
         self.camera_manager.set_sensor(cam_index, notify=False)
@@ -574,7 +615,7 @@ class KeyboardControl(object):
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         global count_control
-        csv = pd.read_csv('Driving_record.csv', names=['server','client','none','vehicle','map','time','none2','speed','comp','accel','gyro','loc','gnss','height','none3','throttle','steer','brake','reverse','handbrake','manual'])
+        global csv
 
         data_throttle = csv['throttle']
         data_throttle_value = data_throttle.values
