@@ -70,7 +70,7 @@ import csv
 import copy
 import pandas as pd
 count_control = 0
-csv = pd.read_csv('Driving_record.csv', names=['server','client','none','vehicle','map','time','none2','speed','comp','accel','gyro','loc_x','loc_y','gnss','height','none3','throttle','steer','brake','reverse','handbrake','manual'])
+csv_1 = pd.read_csv('Driving_record.csv', names=['server','client','none','vehicle','map','time','none2','speed','comp','accel','gyro','loc_x','loc_y','gnss','height','none3','throttle','steer','brake','reverse','handbrake','manual'])
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -243,8 +243,8 @@ class World(object):
         ]
 
     def restart(self):
-        global csv
-        data_vehicle = csv['vehicle']
+        global csv_1
+        data_vehicle = csv_1['vehicle']
         data_vehicle_value = data_vehicle.values
         data_vehicle_list = data_vehicle_value.tolist()
         vehicle_name = data_vehicle_list[0]
@@ -297,15 +297,15 @@ class World(object):
                 sys.exit(1)
             spawn_points = self.map.get_spawn_points()
             spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-            data_loc_x = csv['loc_x']
+            data_loc_x = csv_1['loc_x']
             data_loc_x_value = data_loc_x.values
             data_loc_x_list = data_loc_x_value.tolist()
-            data_loc_y = csv['loc_y']
+            data_loc_y = csv_1['loc_y']
             data_loc_y_value = data_loc_y.values
             data_loc_y_list = data_loc_y_value.tolist()
             spawn_point.location.x = data_loc_x_list[0]
             spawn_point.location.y = data_loc_y_list[0] 
-            data_comp = csv['comp']
+            data_comp = csv_1['comp']
             data_comp_value = data_comp.values
             data_comp_list = data_comp_value.tolist()
             result_comp = data_comp_list[0]
@@ -615,29 +615,29 @@ class KeyboardControl(object):
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         global count_control
-        global csv
+        global csv_1
 
-        data_throttle = csv['throttle']
+        data_throttle = csv_1['throttle']
         data_throttle_value = data_throttle.values
         data_throttle_list = data_throttle_value.tolist()
 
-        data_steer = csv['steer']
+        data_steer = csv_1['steer']
         data_steer_value = data_steer.values
         data_steer_list = data_steer_value.tolist()
 
-        data_brake = csv['brake']
+        data_brake = csv_1['brake']
         data_brake_value = data_brake.values
         data_brake_list = data_brake_value.tolist()
 
-        data_reverse = csv['reverse']
+        data_reverse = csv_1['reverse']
         data_reverse_value = data_reverse.values
         data_reverse_list = data_reverse_value.tolist()
 
-        data_handbrake = csv['handbrake']
+        data_handbrake = csv_1['handbrake']
         data_handbrake_value = data_handbrake.values
         data_handbrake_list = data_handbrake_value.tolist()
 
-        data_manual = csv['manual']
+        data_manual = csv_1['manual']
         data_manual_value = data_manual.values
         data_manual_list = data_manual_value.tolist()
         
@@ -756,15 +756,29 @@ class HUD(object):
             collision,
             '',
             'Number of vehicles: % 8d' % len(vehicles)]
+        # Using the l.x and t.location.x we can find the NPC vehicle's location vector  
         if len(vehicles) > 1:
+            #vehicles_copy = copy.deepcopy(vehicles)
+            location = lambda k: (k.x,k.y,k.z)
+            linelist=[]
+            location_list=[]
             self._info_text += ['Nearby vehicles:']
             distance = lambda l: math.sqrt((l.x - t.location.x)**2 + (l.y - t.location.y)**2 + (l.z - t.location.z)**2)
-            vehicles = [(distance(x.get_location()), x) for x in vehicles if x.id != world.player.id]
-            for d, vehicle in sorted(vehicles, key=lambda vehicles: vehicles[0]):
-                if d > 200.0:
-                    break
+            vehicles= [(distance(x.get_location()), x) for x in vehicles if x.id != world.player.id]
+            for d, vehicle in vehicles:
+                if d > 100.0:
+                    continue
+                location_list.append(location(vehicle.get_location()))
                 vehicle_type = get_actor_display_name(vehicle, truncate=22)
                 self._info_text.append('% 4dm %s' % (d, vehicle_type))
+            """with open ('Collision_vector.csv', 'a', encoding='UTF-8', newline='') as f:
+                for value in location_list:
+                    value = str(value)
+                    linelist.append(value)
+                wr  = csv.writer(f)
+                wr.writerow(linelist)
+            f.close
+            """            
 
     def toggle_info(self):
         self._show_info = not self._show_info
